@@ -1,13 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
-  MantineProvider,
   Select,
   TextInput,
   Grid,
   Title,
-  Container,
+  Group,
   Paper,
-  Badge,
+  Slider,
   Checkbox,
   NumberInput,
   Flex,
@@ -15,33 +14,66 @@ import {
   ActionIcon,
   Menu,
   ColorInput,
+  ThemeIcon,
+  Text,
+  Divider,
+  Modal,
+  Tabs,
+  Table,
 } from '@mantine/core';
-import { IconSettings, IconFileDownload, IconUpload } from '@tabler/icons-react';
+import { IconSettings, IconFileDownload, IconUsers, IconLayout, IconShirt, IconMapPin, IconSoccerField } from '@tabler/icons-react';
 import { formationsData } from './formationsData';
 import { Field, PlayerData, JerseyOptions, JerseyStyle } from './Field';
 import * as htmlToImage from 'html-to-image';
+import { useOutletContext } from 'react-router-dom';
+
+interface ContextType {
+  language: 'pl' | 'en';
+  setLanguage: (lang: 'pl' | 'en') => void;
+  translations: Record<string, string>;
+}
+
+function initPlayersForFormation(formation: string): Record<string, PlayerData> {
+  const newPlayers: Record<string, PlayerData> = {};
+  formationsData[formation].forEach((player) => {
+    newPlayers[player.id] = { name: '', number: 1, isCaptain: false };
+  });
+  return newPlayers;
+}
 
 export function LineupBuilder() {
-  const [formation, setFormation] = useState<string | null>('3-5-2');
-  const [players, setPlayers] = useState<Record<string, PlayerData>>({});
+  const { translations } = useOutletContext<ContextType>();
+  const defaultFormation = '3-5-2';
+  const [formation, setFormation] = useState<string | null>(defaultFormation);
+  const [players, setPlayers] = useState<Record<string, PlayerData>>(
+    initPlayersForFormation(defaultFormation)
+  );
   const [jerseyOptions, setJerseyOptions] = useState<JerseyOptions>({
     shirtColor: '#007bff',
     sleeveColor: '#ffffff',
     textColor: '#ffffff',
     shirtStyle: 'plain',
+    shirtStyleColor: '#ffffff',
   });
   const [badgeColor, setBadgeColor] = useState('#007bff');
+  const [modalOpened, setModalOpened] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [currentFieldIndex, setCurrentFieldIndex] = useState(0);
+  const [paperRadius, setPaperRadius] = useState<'xs' | 'sm' | 'md' | 'lg' | 'xl'>('sm');
   const fieldRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (formation) {
-      const newPlayers: Record<string, PlayerData> = {};
-      formationsData[formation].forEach((player) => {
-        newPlayers[player.id] = { name: '', number: 1, isCaptain: false };
-      });
-      setPlayers(newPlayers);
+  const openPlayerModal = (playerId: string) => {
+    setSelectedPlayerId(playerId);
+    setModalOpened(true);
+  };
+
+  const handleFormationChange = (value: string | null) => {
+    if (value) {
+      setFormation(value);
+      setPlayers(initPlayersForFormation(value));
     }
-  }, [formation]);
+  };
 
   const handlePlayerChange = (
     id: string,
@@ -67,67 +99,28 @@ export function LineupBuilder() {
     }
   };
 
-  const renderPlayerInputs = () => {
-    if (!formation) return null;
-    return (
-      <Paper withBorder p="md">
-        {formationsData[formation].map((player) => (
-          <Grid key={player.id} align="center">
-            <Grid.Col span={2}>
-              <Badge variant="light">{player.label}</Badge>
-            </Grid.Col>
-            <Grid.Col span={4}>
-              <TextInput
-                label="Nazwisko"
-                placeholder="Nick gracza"
-                value={players[player.id]?.name || ''}
-                onChange={(e) =>
-                  handlePlayerChange(player.id, 'name', e.target.value)
-                }
-              />
-            </Grid.Col>
-            <Grid.Col span={3}>
-              <NumberInput
-                label="Numer"
-                placeholder="Wpisz numer"
-                value={players[player.id]?.number || 1}
-                onChange={(value) =>
-                  handlePlayerChange(player.id, 'number', value || 1)
-                }
-                min={1}
-                max={99}
-                step={1}
-              />
-            </Grid.Col>
-            <Grid.Col span={3}>
-              <Checkbox
-                label="Kapitan"
-                checked={players[player.id]?.isCaptain || false}
-                onChange={(e) =>
-                  handlePlayerChange(player.id, 'isCaptain', e.target.checked)
-                }
-              />
-            </Grid.Col>
-          </Grid>
-        ))}
-      </Paper>
-    );
+  const savePlayerData = () => {
+    setModalOpened(false);
+    setSelectedPlayerId(null);
   };
 
   const exportAsImage = async () => {
     if (fieldRef.current) {
       try {
-        const dataUrl = await htmlToImage.toPng(fieldRef.current);
+        const node = fieldRef.current;
+        const rect = node.getBoundingClientRect();
+        const dataUrl = await htmlToImage.toPng(node, {
+          width: rect.width,
+          height: rect.height,
+        });
         const link = document.createElement('a');
         link.href = dataUrl;
         link.download = 'lineup.png';
         link.click();
       } catch (err) {
         console.error('Error generating image:', err);
-        alert('An error occurred while generating the image.');
+        alert(translations['Wystąpił błąd przy generowaniu obrazu'] || 'Error generating image');
       }
-    } else {
-      console.error('Element "field" not found!');
     }
   };
 
@@ -140,7 +133,7 @@ export function LineupBuilder() {
     link.click();
   };
 
-  const importFromJSON = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFromJSON = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       try {
@@ -156,154 +149,299 @@ export function LineupBuilder() {
             setBadgeColor(importedData.badgeColor);
           }
         } else {
-          alert("Importowany plik nie zawiera wymaganych danych.");
+          alert(translations['Imported file does not contain required data'] || 'Imported file does not contain required data');
         }
       } catch (error) {
-        console.error("Błąd importu:", error);
-        alert("Nie udało się zaimportować pliku. Sprawdź format JSON.");
+        console.error('Import error:', error);
+        alert(translations['Failed to import file'] || 'Failed to import file. Check JSON format.');
       } finally {
         event.target.value = '';
       }
     }
   };
 
+  const triggerFileSelect = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const toggleField = () => {
+    setCurrentFieldIndex((prev) => (prev + 1) % 2);
+  };
+
   return (
-    <MantineProvider>
-      <Container size="xl">
-        <Title order={1} mb="lg">
-          Kreator składu
-        </Title>
-        <Flex direction="row" justify="space-between" align="center" mb="lg">
-          <Select
-            label="Wybierz formację"
-            placeholder="Wybierz formację"
-            value={formation}
-            onChange={setFormation}
-            data={Object.keys(formationsData)}
-          />
+    <div>
+      <input
+        type="file"
+        accept=".json"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleImportFromJSON}
+      />
+      {formation && (
+        <Grid>
+          <Grid.Col span={{ base: 12, md: 3 }}>
+            <Paper shadow="xs" p="md" withBorder>
+              <Tabs defaultValue="customization">
+                <Tabs.List grow>
+                  <Tabs.Tab value="customization" leftSection={<IconSettings size={14} />}>
+                    {translations.customization}
+                  </Tabs.Tab>
+                  <Tabs.Tab value="players" leftSection={<IconUsers size={14} />}>
+                    {translations.players}
+                  </Tabs.Tab>
+                </Tabs.List>
 
-          <Flex align="center">
-            <Button
-              onClick={exportAsImage}
-              leftSection={<IconFileDownload size={14} />}
-              variant="light"
-              style={{ marginRight: '8px' }}
-            >
-              Eksportuj
-            </Button>
-
-            <Menu shadow="md">
-              <Menu.Target>
-                <ActionIcon size="lg" variant="light">
-                  <IconSettings size={24} />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item onClick={exportAsJSON}>
-                  Eksportuj skład
-                </Menu.Item>
-                <Menu.Item>
-                  <label htmlFor="import-input" style={{ cursor: 'pointer' }}>
-                    Importuj skład
-                  </label>
-                  <input
-                    type="file"
-                    accept=".json"
-                    id="import-input"
-                    style={{ display: 'none' }}
-                    onChange={importFromJSON}
+                <Tabs.Panel value="customization" pt="xs">
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" size="sm">
+                      <IconLayout />
+                    </ThemeIcon>
+                    <Title order={3}>{translations.formation}</Title>
+                  </Group>
+                  <Select
+                    label={translations.selectFormation}
+                    placeholder={translations.selectFormation}
+                    value={formation}
+                    onChange={handleFormationChange}
+                    data={Object.keys(formationsData)}
+                    mb="md"
                   />
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Flex>
-        </Flex>
+                  <Divider my="sm" />
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" size="sm">
+                      <IconMapPin />
+                    </ThemeIcon>
+                    <Title order={3}>{translations.positions}</Title>
+                  </Group>
+                  <ColorInput
+                    label={translations.badgeColor}
+                    format="hex"
+                    value={badgeColor}
+                    onChange={setBadgeColor}
+                    mb="md"
+                  />
+                  <Slider
+                    label="Zaokrąglenie"
+                    value={['xs', 'sm', 'md', 'lg', 'xl'].indexOf(paperRadius)}
+                    onChange={(value) => setPaperRadius(['xs', 'sm', 'md', 'lg', 'xl'][value] as 'xs' | 'sm' | 'md' | 'lg' | 'xl')}
+                    min={0}
+                    max={4}
+                    step={1}
+                    marks={[
+                      { value: 0, label: 'XS' },
+                      { value: 1, label: 'SM' },
+                      { value: 2, label: 'MD' },
+                      { value: 3, label: 'LG' },
+                      { value: 4, label: 'XL' },
+                    ]}
+                    mb="xl"
+                  />
+                  <Divider my="sm" />
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" size="sm">
+                      <IconShirt />
+                    </ThemeIcon>
+                    <Title order={3}>{translations.jersey}</Title>
+                  </Group>
+                  <ColorInput
+                    label={translations.shirtColor}
+                    format="hex"
+                    value={jerseyOptions.shirtColor}
+                    onChange={(value) =>
+                      setJerseyOptions({ ...jerseyOptions, shirtColor: value })
+                    }
+                    mb="sm"
+                  />
+                  <ColorInput
+                    label={translations.sleeveColor}
+                    format="hex"
+                    value={jerseyOptions.sleeveColor}
+                    onChange={(value) =>
+                      setJerseyOptions({ ...jerseyOptions, sleeveColor: value })
+                    }
+                    mb="sm"
+                  />
+                  <ColorInput
+                    label={translations.styleColor}
+                    format="hex"
+                    value={jerseyOptions.shirtStyleColor}
+                    onChange={(value) =>
+                      setJerseyOptions({ ...jerseyOptions, shirtStyleColor: value })
+                    }
+                    mb="sm"
+                  />
+                  <ColorInput
+                    label={translations.textColor}
+                    format="hex"
+                    value={jerseyOptions.textColor}
+                    onChange={(value) =>
+                      setJerseyOptions({ ...jerseyOptions, textColor: value })
+                    }
+                    mb="sm"
+                  />
+                  <Select
+                    label={translations.shirtStyle}
+                    data={[
+                      'plain',
+                      'striped',
+                      'dashed',
+                      'two-color',
+                      'striped-thin',
+                      'striped-thick',
+                      'waves',
+                      'checkered',
+                      'hoops',
+                      'single-band',
+                    ]}
+                    value={jerseyOptions.shirtStyle}
+                    onChange={(value) =>
+                      setJerseyOptions({
+                        ...jerseyOptions,
+                        shirtStyle: value as JerseyStyle,
+                      })
+                    }
+                  />
+                </Tabs.Panel>
 
-        {formation && (
-          <Grid>
-            <Grid.Col span={4}>
-              {renderPlayerInputs()}
+                <Tabs.Panel value="players" pt="xs">
+                  <Table>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>{translations.surname}</Table.Th>
+                        <Table.Th>{translations.number}</Table.Th>
+                        <Table.Th>{translations.captain}</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {Object.entries(players).map(([id, player]) => (
+                        <Table.Tr key={id}>
+                          <Table.Td>
+                            <TextInput
+                              value={player.name}
+                              onChange={(e) => handlePlayerChange(id, 'name', e.target.value)}
+                            />
+                          </Table.Td>
+                          <Table.Td>
+                            <NumberInput
+                              value={player.number}
+                              onChange={(value) => handlePlayerChange(id, 'number', value || 1)}
+                              min={1}
+                              max={99}
+                            />
+                          </Table.Td>
+                          <Table.Td>
+                            <Checkbox
+                              checked={player.isCaptain}
+                              onChange={(e) => handlePlayerChange(id, 'isCaptain', e.target.checked)}
+                            />
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Tabs.Panel>
+              </Tabs>
+            </Paper>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6.0 }}>
+            <Field
+              ref={fieldRef}
+              formation={formation}
+              players={players}
+              formationsData={formationsData}
+              jerseyOptions={jerseyOptions}
+              badgeColor={badgeColor}
+              onPlayerClick={openPlayerModal}
+              currentFieldIndex={currentFieldIndex}
+              paperRadius={paperRadius}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 3 }}>
+            <Paper shadow="xs" p="md" withBorder>
+              <Flex direction="column" gap="md">
+                <Button
+                  onClick={toggleField}
+                  variant="light"
+                  size="md"
+                  leftSection={<IconSoccerField size={24} />}
+                >
+                  Zmień murawę
+                </Button>
+                <Flex direction="row" gap="sm" align="center" justify="space-between">
+                  <Button
+                    onClick={exportAsImage}
+                    leftSection={<IconFileDownload size={24} />}
+                    variant="light"
+                    size="md"
+                    style={{ flexGrow: 1 }}
+                  >
+                    {translations.exportImage}
+                  </Button>
+                  <Menu shadow="md">
+                    <Menu.Target>
+                      <ActionIcon size="lg" variant="light">
+                        <IconSettings size={24} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item onClick={exportAsJSON}>
+                        {translations.exportJSON}
+                      </Menu.Item>
+                      <Menu.Item onClick={triggerFileSelect}>
+                        {translations.importJSON}
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                </Flex>
+              </Flex>
+            </Paper>
+          </Grid.Col>
+        </Grid>
+      )}
 
-              {/* Panel customizacji koszulki */}
-              <Paper withBorder p="md" mt="md">
-                <Title order={4} mb="sm">
-                  Customizacja koszulki
-                </Title>
-                <ColorInput
-                  label="Kolor koszulki"
-                  format="hex"
-                  value={jerseyOptions.shirtColor}
-                  onChange={(value) =>
-                    setJerseyOptions({ ...jerseyOptions, shirtColor: value })
-                  }
-                  mb="sm"
-                />
-                <ColorInput
-                  label="Kolor rękawa"
-                  format="hex"
-                  value={jerseyOptions.sleeveColor}
-                  onChange={(value) =>
-                    setJerseyOptions({ ...jerseyOptions, sleeveColor: value })
-                  }
-                  mb="sm"
-                />
-                <ColorInput
-                  label="Kolor numeru"
-                  format="hex"
-                  value={jerseyOptions.textColor}
-                  onChange={(value) =>
-                    setJerseyOptions({ ...jerseyOptions, textColor: value })
-                  }
-                  mb="sm"
-                />
-                <Select
-                  label="Styl koszulki"
-                  data={[
-                    'plain',
-                    'striped',
-                    'dashed',
-                    'two-color',
-                    'striped-thin',
-                    'striped-thick',
-                    'waves',
-                    'checkered',
-                    'hoops',
-                    'single-band',
-                  ]}
-                  value={jerseyOptions.shirtStyle}
-                  onChange={(value) =>
-                    setJerseyOptions({
-                      ...jerseyOptions,
-                      shirtStyle: value as JerseyStyle,
-                    })
-                  }
-                />
-              </Paper>
-
-              <Paper withBorder p="md" mt="md">
-                <Title order={4} mb="sm">
-                  Pozycja zawodników
-                </Title>
-                <ColorInput
-                  label="Kolor badge"
-                  format="hex"
-                  value={badgeColor}
-                  onChange={setBadgeColor}
-                />
-              </Paper>
-            </Grid.Col>
-            <Grid.Col span={8} ref={fieldRef}>
-              <Field
-                formation={formation}
-                players={players}
-                formationsData={formationsData}
-                jerseyOptions={jerseyOptions}
-                badgeColor={badgeColor}
-              />
-            </Grid.Col>
-          </Grid>
+      <Modal
+        opened={modalOpened}
+        onClose={() => setModalOpened(false)}
+        title={translations.editPlayer}
+        centered
+      >
+        {selectedPlayerId && (
+          <div>
+            <TextInput
+              label={translations.surname}
+              value={players[selectedPlayerId]?.name || ''}
+              onChange={(e) =>
+                handlePlayerChange(selectedPlayerId, 'name', e.target.value)
+              }
+              mb="sm"
+            />
+            <NumberInput
+              label={translations.number}
+              value={players[selectedPlayerId]?.number || 1}
+              onChange={(value) =>
+                handlePlayerChange(selectedPlayerId, 'number', value || 1)
+              }
+              min={1}
+              max={99}
+              step={1}
+              mb="sm"
+            />
+            <Checkbox
+              label={translations.captain}
+              checked={players[selectedPlayerId]?.isCaptain || false}
+              onChange={(e) =>
+                handlePlayerChange(selectedPlayerId, 'isCaptain', e.target.checked)
+              }
+              mb="sm"
+            />
+            <Button onClick={savePlayerData} variant="light" fullWidth>
+              {translations.save}
+            </Button>
+          </div>
         )}
-      </Container>
-    </MantineProvider>
+      </Modal>
+    </div>
   );
 }

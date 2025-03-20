@@ -1,0 +1,29 @@
+.control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: var(--mantine-radius-md);
+    transition: border-color 100ms ease;
+  }
+  
+  .control:hover {
+    border-color: var(--mantine-color-gray-5);
+  }
+  
+  .control[data-expanded] {
+    border-color: var(--mantine-color-blue-6);
+  }
+  
+  .label {
+    font-weight: 500;
+    font-size: 14px;
+  }
+  
+  .icon {
+    transition: transform 150ms ease;
+  }
+  
+  .control[data-expanded] .icon {
+    transform: rotate(180deg);
+  }
