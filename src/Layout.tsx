@@ -14,15 +14,17 @@ import {
   useComputedColorScheme,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   IconBrandDiscordFilled,
   IconBrandInstagram,
   IconBrandYoutube,
   IconUsers,
-  IconFileText,
   IconSun,
   IconMoon,
+  IconTrophy,
+  IconHome,
+  IconLayoutGrid,
 } from '@tabler/icons-react';
 import classes from './FooterLinks.module.css';
 import logo from '/assets/logo.png';
@@ -36,8 +38,9 @@ export function Layout() {
     getInitialValueInEffect: true,
   });
   const [language, setLanguage] = useState<'pl' | 'en'>('pl');
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  // Set initial language based on browser
   useEffect(() => {
     const browserLang = navigator.language.split('-')[0];
     if (browserLang === 'en') {
@@ -94,7 +97,12 @@ export function Layout() {
               hiddenFrom="sm"
               size="sm"
             />
-            <img src={logo} alt="Logo apki" style={{ height: '40px' }} />
+            <img
+              src={logo}
+              alt="Logo apki"
+              style={{ height: '40px', cursor: 'pointer' }}
+              onClick={() => navigate('/')}
+            />
           </Group>
           <Group gap="xs">
             <ActionIcon
@@ -119,14 +127,14 @@ export function Layout() {
 
       <AppShell.Navbar fw={'bold'} p="xs">
         <NavLink
-          label={translations[language].appTitle}
+          label={language === 'pl' ? 'Strona Główna' : 'Home'}
           component={Link}
           to="/"
           onClick={toggle}
           active={location.pathname === '/'}
           leftSection={
             <ThemeIcon radius={'md'} size={'lg'} variant="light">
-              <IconUsers size={16} />
+              <IconHome size={16} />
             </ThemeIcon>
           }
           styles={{
@@ -134,15 +142,16 @@ export function Layout() {
             label: { fontSize: '14px' },
           }}
         />
+
         <NavLink
-          label={translations[language].lineup}
+          label={language === 'pl' ? 'Kreator Składu' : 'Lineup Builder'}
           component={Link}
-          to="/table"
+          to="/lineupbuilder"
           onClick={toggle}
-          active={location.pathname === '/table'}
+          active={location.pathname === '/lineupbuilder'}
           leftSection={
             <ThemeIcon radius={'md'} size={'lg'} variant="light">
-              <IconFileText size={16} />
+              <IconLayoutGrid size={16} />
             </ThemeIcon>
           }
           styles={{
@@ -150,6 +159,24 @@ export function Layout() {
             label: { fontSize: '14px' },
           }}
         />
+
+        <NavLink
+          label={language === 'pl' ? 'Rozgrywki' : 'Competitions'}
+          component={Link}
+          to="/competitions"
+          onClick={toggle}
+          active={location.pathname.startsWith('/competitions')}
+          leftSection={
+            <ThemeIcon radius={'md'} size={'lg'} variant="light">
+              <IconTrophy size={16} />
+            </ThemeIcon>
+          }
+          styles={{
+            root: { borderRadius: '10px' },
+            label: { fontSize: '14px' },
+          }}
+        />
+
         <Group p="xs">
           <LanguagePicker language={language} setLanguage={setLanguage} />
         </Group>
@@ -165,7 +192,7 @@ export function Layout() {
               <Group gap="xs" align="center">
                 <img src={logo} alt="Logo apki" style={{ height: '30px' }} />
                 <Text size="sm" c="dimmed">
-                  © {new Date().getFullYear()} CLUBSPANEL APP
+                  © {new Date().getFullYear()} CLUBSPANEL APP by Bialymodelu
                 </Text>
               </Group>
               <Group gap="xs" wrap="nowrap">

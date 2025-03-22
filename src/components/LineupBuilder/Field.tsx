@@ -1,5 +1,5 @@
 import React from 'react';
-import { AspectRatio, Box, Badge, Paper, Text, Image, useMantineTheme, Indicator } from '@mantine/core';
+import { Box, Badge, Paper, Text, Image, useMantineTheme, Indicator } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import SoccerJersey from 'soccer-jersey';
 
@@ -45,20 +45,40 @@ interface FieldProps {
   onPlayerClick: (playerId: string) => void;
   currentFieldIndex: number;
   paperRadius: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  customBackground?: string | null;
+  fieldScale: number;
+  backgroundPositionX: number;
+  backgroundPositionY: number;
+  fieldPositionY: number;
 }
 
-const fieldVariants = [
-  '/assets/field.png',
-  '/assets/field2.png'
-];
+const fieldVariants = ['/assets/field.png', '/assets/field2.png'];
 
 export const Field = React.forwardRef<HTMLDivElement, FieldProps>(
-  ({ formation, players, formationsData, jerseyOptions, badgeColor, onPlayerClick, currentFieldIndex, paperRadius }, ref) => {
+  (
+    {
+      formation,
+      players,
+      formationsData,
+      jerseyOptions,
+      badgeColor,
+      onPlayerClick,
+      currentFieldIndex,
+      paperRadius,
+      customBackground,
+      fieldScale,
+      backgroundPositionX,
+      backgroundPositionY,
+      fieldPositionY,
+    },
+    ref
+  ) => {
     const theme = useMantineTheme();
     const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
     const isTablet = useMediaQuery(`(max-width: ${theme.breakpoints.md})`);
 
     const markerWidth = isMobile ? '13%' : isTablet ? '14%' : '12%';
+    const baseWidth = isMobile ? '100%' : isTablet ? '95%' : '90%';
 
     const getJerseyImage = (player: PlayerData) => {
       return SoccerJersey.draw({
@@ -77,78 +97,79 @@ export const Field = React.forwardRef<HTMLDivElement, FieldProps>(
     }
 
     return (
-      <Box style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-        <AspectRatio ratio={1} w="100%">
-          <Box
-            ref={ref}
-            style={{
-              backgroundImage: `url(${fieldVariants[currentFieldIndex]})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-            }}
-            pos="relative"
-            w="100%"
-            h="100%"
-          >
-            {formationsData[formation].map((player) => {
-              const data = players[player.id];
-              return (
-                <Box
-                  key={player.id}
+      <Box
+        ref={ref}
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          backgroundImage: customBackground ? `url(${customBackground})` : undefined,
+          backgroundSize: 'cover',
+          backgroundPosition: `${backgroundPositionX}% ${backgroundPositionY}%`,
+          backgroundRepeat: 'no-repeat',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+        }}
+      >
+        <Box
+          style={{
+            position: 'relative',
+            width: baseWidth,
+            maxWidth: '1000px',
+            aspectRatio: '1 / 1',
+            transform: `translateY(${fieldPositionY * 5}%) scale(${fieldScale})`,
+            transformOrigin: 'center',
+            backgroundImage: `url(${fieldVariants[currentFieldIndex]})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
+          {formationsData[formation].map((player) => {
+            const data = players[player.id];
+            return (
+              <Box
+                key={player.id}
+                style={{
+                  position: 'absolute',
+                  left: `${player.x}%`,
+                  top: `${player.y}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: markerWidth,
+                  minWidth: isMobile ? '45px' : '60px',
+                  cursor: 'pointer',
+                }}
+                onClick={() => onPlayerClick(player.id)}
+              >
+                <Paper
+                  p={isMobile ? '2px' : 'sm'}
+                  ta="center"
+                  radius={paperRadius}
+                  shadow="md"
+                  withBorder
+                  w="100%"
                   style={{
-                    position: 'absolute',
-                    left: `${player.x}%`,
-                    top: `${player.y}%`,
-                    transform: 'translate(-50%, -50%)',
-                    width: markerWidth,
-                    minWidth: isMobile ? '45px' : '60px',
-                    cursor: 'pointer',
+                    overflow: 'visible',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    position: 'relative',
                   }}
-                  onClick={() => onPlayerClick(player.id)}
                 >
-                  <Paper
-                    p={isMobile ? '2px' : 'sm'}
-                    ta="center"
-                    radius={paperRadius}
-                    shadow="md"
-                    withBorder
-                    w="100%"
-                    style={{
-                      overflow: 'visible',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      position: 'relative',
-                    }}
-                  >
-                    {data && (
-                      <Box style={{ position: 'relative', width: '100%' }}>
-                        {data.isCaptain && (
-                          <Indicator
-                            label="C"
-                            fw="bold"
-                            color="yellow"
-                            size={isMobile ? 12 : 16}
-                            position="top-end"
-                            offset={5}
-                            style={{ zIndex: 2 }}
-                          >
-                            <Image
-                              crossOrigin="anonymous"
-                              src={getJerseyImage(data)}
-                              alt={`${data.name} jersey`}
-                              style={{
-                                width: '100%',
-                                maxWidth: isMobile ? '35px' : '60px',
-                                margin: '0 auto',
-                                zIndex: 1,
-                              }}
-                            />
-                          </Indicator>
-                        )}
-                        {!data.isCaptain && (
+                  {data && (
+                    <Box style={{ position: 'relative', width: '100%' }}>
+                      {data.isCaptain && (
+                        <Indicator
+                          label="C"
+                          fw="bold"
+                          color="yellow"
+                          size={isMobile ? 12 : 16}
+                          position="top-end"
+                          offset={5}
+                          style={{ zIndex: 2 }}
+                        >
                           <Image
                             crossOrigin="anonymous"
                             src={getJerseyImage(data)}
@@ -157,32 +178,43 @@ export const Field = React.forwardRef<HTMLDivElement, FieldProps>(
                               width: '100%',
                               maxWidth: isMobile ? '35px' : '60px',
                               margin: '0 auto',
+                              zIndex: 1,
                             }}
                           />
-                        )}
-                        <Text size={isMobile ? '9px' : 'sm'} fw={500} truncate>
-                          {data.name}
-                        </Text>
-                        <Badge
-                          color={badgeColor}
-                          autoContrast
-                          variant="filled"
-                          size={isMobile ? 'xs' : 'sm'}
-                          mt="1px"
-                        >
-                          {player.label}
-                        </Badge>
-                      </Box>
-                    )}
-                    {!data && (
-                      <Text size={isMobile ? '2xs' : 'sm'}>Brak danych</Text>
-                    )}
-                  </Paper>
-                </Box>
-              );
-            })}
-          </Box>
-        </AspectRatio>
+                        </Indicator>
+                      )}
+                      {!data.isCaptain && (
+                        <Image
+                          crossOrigin="anonymous"
+                          src={getJerseyImage(data)}
+                          alt={`${data.name} jersey`}
+                          style={{
+                            width: '100%',
+                            maxWidth: isMobile ? '35px' : '60px',
+                            margin: '0 auto',
+                          }}
+                        />
+                      )}
+                      <Text size={isMobile ? '9px' : 'sm'} fw={500} truncate>
+                        {data.name}
+                      </Text>
+                      <Badge
+                        color={badgeColor}
+                        autoContrast
+                        variant="filled"
+                        size={isMobile ? 'xs' : 'sm'}
+                        mt="1px"
+                      >
+                        {player.label}
+                      </Badge>
+                    </Box>
+                  )}
+                  {!data && <Text size={isMobile ? '2xs' : 'sm'}>Brak danych</Text>}
+                </Paper>
+              </Box>
+            );
+          })}
+        </Box>
       </Box>
     );
   }

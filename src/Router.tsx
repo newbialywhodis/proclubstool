@@ -1,6 +1,8 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { HomePage } from './pages/Home.page';
-import { Page2 } from './pages/Page2';
+import { LineupBuilderPage } from './pages/LineupBuilder.page';
+import { Competitions } from './pages/Competitions.page';
+import { LeagueTablePage } from './pages/LeagueTablePage';
 import { Layout } from './Layout';
 
 const router = createBrowserRouter([
@@ -12,8 +14,16 @@ const router = createBrowserRouter([
         element: <HomePage />,
       },
       {
-        path: '/table',
-        element: <Page2 />,
+        path: '/lineupbuilder',
+        element: <LineupBuilderPage />,
+      },
+      {
+        path: '/competitions',
+        element: <Competitions />,
+      },
+      {
+        path: '/league/:leagueSlug',
+        element: <LeagueTablePage />,
       },
     ],
   },

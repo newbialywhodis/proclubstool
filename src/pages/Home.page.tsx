@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { LineupBuilder } from '../components/LineupBuilder/LineupBuilder';
 import { translations } from '../translations';
+import { Home } from '../components/Home/Home';
 
 export function HomePage() {
-  return <LineupBuilder />;
+  return <Home />;
 }
